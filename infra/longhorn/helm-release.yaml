@@ -1,0 +1,57 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: longhorn
+  namespace: flux-system
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: longhorn
+      version: 1.9.2
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn
+        namespace: flux-system
+      interval: 10m
+  targetNamespace: longhorn-system
+  install:
+    createNamespace: false
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+
+  # 必要に応じて values を調整
+  values:
+    # DaemonSet/Manager のリソースを軽く制限したい場合の例
+    defaultSettings:
+      # 物理ディスクのマウントポイント直下など、ノードごとのデータ保存先
+      defaultDataPath: /var/lib/longhorn
+      # レプリカ数（最低2~3推奨。単ノードは 1）
+      defaultReplicaCount: 1
+      # 同一ノードに複数レプリカを許すか（小規模クラスタなら true も検討）
+      replicaSoftAntiAffinity: true
+      # RWX 有効化時の NFS サーバ（share-manager）関連はデフォルトで OK
+      storageOverProvisioningPercentage: 200
+      storageMinimalAvailablePercentage: 10
+      defaultLonghornStaticStorageClass: longhorn
+
+    persistence:
+      defaultClass: true                # Chart が作る StorageClass「longhorn」をデフォルト化
+      defaultFsType: ext4
+      reclaimPolicy: Delete
+
+    # 必要ならノード選択/トレランス
+    # tolerations:
+    #   - key: "node.kubernetes.io/not-ready"
+    #     operator: "Exists"
+    #     effect: "NoExecute"
+    # affinity:
+    #   nodeAffinity:
+    #     requiredDuringSchedulingIgnoredDuringExecution:
+    #       nodeSelectorTerms:
+    #         - matchExpressions:
+    #             - key: "node-role.kubernetes.io/worker"
+    #               operator: Exists
